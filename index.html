@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Lock RP – FiveM Roleplay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+/* ===== RESET & VARIABLES ===== */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --purple:       #7c3aed;
+  --purple-light: #a855f7;
+  --purple-soft:  #c084fc;
+  --purple-dim:   #4c1d95;
+  --purple-glow:  rgba(124,58,237,0.4);
+  --white:        #ffffff;
+  --off-white:    #f1eeff;
+  --bg:           #09050f;
+  --bg2:          #0f0a1a;
+  --bg3:          #160e24;
+  --border:       rgba(168,85,247,0.22);
+  --border-s:     rgba(168,85,247,0.5);
+  --text:         #ede8ff;
+  --muted:        #8b7aa8;
+  --font-body:    'Outfit', sans-serif;
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-mono:    'Share Tech Mono', monospace;
+}
+html { scroll-behavior:smooth; }
+body {
+  background:var(--bg); color:var(--text);
+  font-family:var(--font-body); font-size:16px;
+  overflow-x:hidden; min-height:100vh;
+}
+body::after {
+  content:''; position:fixed; inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events:none; z-index:9000; opacity:.5;
+}
+::-webkit-scrollbar { width:5px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--purple); border-radius:3px; }
+
+/* ── TRANSITION OVERLAY ── */
+#pt {
+  position:fixed; inset:0; z-index:8000;
+  background:linear-gradient(135deg, var(--purple-dim) 0%, var(--purple) 100%);
+  pointer-events:none; opacity:0;
+  clip-path:inset(100% 0 0 0);
+  transition:none;
+}
+#pt.in  { transition:clip-path .38s cubic-bezier(.76,0,.24,1); clip-path:inset(0% 0 0 0); opacity:1; }
+#pt.out { transition:clip-path .38s cubic-bezier(.76,0,.24,1) .05s; clip-path:inset(0 0 100% 0); opacity:1; }
+
+/* ── NAV ── */
+nav {
+  position:fixed; top:0; left:0; right:0; z-index:500;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 3.5rem; height:66px;
+  background:rgba(9,5,15,0.9); backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+}
+.nav-logo {
+  font-family:var(--font-display); font-size:1.85rem;
+  letter-spacing:.12em; color:var(--white); text-decoration:none;
+  cursor:pointer; user-select:none;
+}
+.nav-logo span { color:var(--purple-light); }
+.nav-links { display:flex; list-style:none; gap:2px; }
+.nav-links li a {
+  display:block; padding:.42rem 1.2rem; color:var(--muted);
+  text-decoration:none; font-size:.88rem; font-weight:600;
+  letter-spacing:.1em; text-transform:uppercase;
+  border:1px solid transparent; border-radius:4px;
+  transition:color .22s, border-color .22s, background .22s;
+  cursor:pointer; position:relative;
+}
+.nav-links li a::after {
+  content:''; position:absolute; bottom:-1px;
+  left:50%; right:50%; height:2px;
+  background:var(--purple-light);
+  transition:left .25s ease, right .25s ease;
+}
+.nav-links li a:hover,
+.nav-links li a.active {
+  color:var(--white); border-color:var(--border);
+  background:rgba(124,58,237,.09);
+}
+.nav-links li a.active::after,
+.nav-links li a:hover::after { left:12%; right:12%; }
+
+/* ── PAGES ── */
+.page { display:none; }
+.page.active { display:block; }
+
+/* ── SHARED BG ELEMENTS ── */
+.bg-grid {
+  position:absolute; inset:0; pointer-events:none;
+  background-image:
+    linear-gradient(rgba(124,58,237,.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124,58,237,.055) 1px, transparent 1px);
+  background-size:55px 55px;
+  mask-image:radial-gradient(ellipse 80% 70% at 50% 50%, black 0%, transparent 80%);
+}
+.orb {
+  position:absolute; border-radius:50%;
+  filter:blur(80px); pointer-events:none;
+}
+.orb1 { width:650px; height:650px; background:rgba(124,58,237,.11); top:-120px; left:50%; transform:translateX(-50%); }
+.orb2 { width:320px; height:320px; background:rgba(168,85,247,.07); bottom:8%; right:8%; }
+.orb3 { width:220px; height:220px; background:rgba(124,58,237,.09); bottom:18%; left:4%; }
+
+/* ── HERO (HOME) ── */
+.hero {
+  min-height:100vh; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  text-align:center; padding:6rem 2rem 4rem;
+  position:relative; overflow:hidden;
+}
+.tag {
+  font-family:var(--font-mono); font-size:.76rem;
+  letter-spacing:.3em; color:var(--purple-soft); text-transform:uppercase;
+  margin-bottom:1.1rem; opacity:0;
+  animation:fadeUp .7s .2s forwards;
+}
+.hero-title {
+  font-family:var(--font-display);
+  font-size:clamp(5.5rem,14vw,10.5rem);
+  line-height:.9; letter-spacing:.06em; color:var(--white);
+  text-shadow:0 0 80px rgba(124,58,237,.4), 0 0 180px rgba(124,58,237,.15);
+  opacity:0; animation:fadeUp .7s .35s forwards;
+}
+.hero-title em { color:var(--purple-light); font-style:normal; }
+.hero-sub {
+  font-size:30px; font-weight:400; font-style:italic;
+  font-family:Georgia, 'Times New Roman', serif;
+  color:var(--muted);
+  max-width:500px; margin:1.5rem auto 0; line-height:1.85;
+  opacity:0; animation:fadeUp .7s .5s forwards;
+}
+.hero-btns {
+  display:flex; gap:1rem; margin-top:2.8rem;
+  justify-content:center; flex-wrap:wrap;
+  opacity:0; animation:fadeUp .7s .65s forwards;
+}
+
+/* ── SUB HEADER (inner pages) ── */
+.sub-header {
+  padding:9.5rem 2rem 4.5rem; text-align:center;
+  background:linear-gradient(180deg, var(--bg2) 0%, var(--bg) 100%);
+  border-bottom:1px solid var(--border);
+  position:relative; overflow:hidden;
+}
+.page-tag {
+  font-family:var(--font-mono); font-size:.76rem;
+  letter-spacing:.28em; color:var(--purple-soft);
+  text-transform:uppercase; margin-bottom:.7rem;
+  opacity:0; animation:fadeUp .55s .15s forwards;
+}
+.page-title {
+  font-family:var(--font-display);
+  font-size:clamp(3rem,7vw,5.5rem);
+  letter-spacing:.07em;
+  opacity:0; animation:fadeUp .6s .25s forwards;
+}
+.page-title em { color:var(--purple-light); font-style:normal; }
+
+/* ── BUTTONS ── */
+.btn {
+  display:inline-flex; align-items:center; justify-content:center;
+  gap:.6rem; padding:.8rem 2rem;
+  font-family:var(--font-body); font-weight:700; font-size:.9rem;
+  letter-spacing:.1em; text-transform:uppercase;
+  text-decoration:none; cursor:pointer; border:none;
+  transition:all .25s; border-radius:4px;
+}
+.btn-purple {
+  background:var(--purple); color:#fff;
+  box-shadow:0 4px 24px rgba(124,58,237,.35);
+  clip-path:polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+  border-radius:0;
+}
+.btn-purple:hover { background:var(--purple-light); transform:translateY(-2px); box-shadow:0 8px 36px rgba(124,58,237,.55); }
+.btn-outline {
+  background:transparent; color:var(--purple-light); border:1.5px solid var(--purple);
+  clip-path:polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+  border-radius:0;
+}
+.btn-outline:hover { background:rgba(124,58,237,.12); transform:translateY(-2px); border-color:var(--purple-light); }
+.btn-w { width:100%; }
+
+/* ── LAYOUT ── */
+.section { padding:5rem 2rem; max-width:1100px; margin:0 auto; }
+.section-sm { max-width:860px; }
+.s-label { font-family:var(--font-mono); font-size:.74rem; letter-spacing:.26em; color:var(--purple-soft); text-transform:uppercase; margin-bottom:.55rem; }
+.s-title { font-family:var(--font-display); font-size:clamp(2rem,5vw,3.2rem); letter-spacing:.06em; margin-bottom:.9rem; }
+.s-title em { color:var(--purple-light); font-style:normal; }
+.s-sub { color:var(--muted); line-height:1.8; max-width:600px; margin-bottom:2.5rem; }
+.divider { height:1px; background:linear-gradient(90deg,transparent,var(--border),transparent); }
+
+/* ── REVEAL ── */
+.reveal { opacity:0; transform:translateY(28px); transition:opacity .6s ease, transform .6s ease; }
+.reveal.d1 { transition-delay:.1s; }
+.reveal.d2 { transition-delay:.2s; }
+.reveal.d3 { transition-delay:.3s; }
+.reveal.vis { opacity:1; transform:none; }
+
+/* ── STATS ── */
+.stats-row {
+  display:flex; justify-content:center; flex-wrap:wrap; gap:3.5rem;
+  padding:2.5rem; border-top:1px solid var(--border);
+  border-bottom:1px solid var(--border); background:rgba(124,58,237,.04);
+}
+.stat { text-align:center; }
+.stat-n { font-family:var(--font-display); font-size:2.8rem; color:var(--purple-light); letter-spacing:.04em; }
+.stat-l { font-family:var(--font-mono); font-size:.7rem; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); margin-top:.15rem; }
+
+/* ── FEATURE CARDS ── */
+.feat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:1.5px; margin-top:2.5rem; border:1.5px solid var(--border); }
+.feat-card { background:var(--bg2); padding:2.2rem 1.8rem; transition:background .3s; position:relative; overflow:hidden; }
+.feat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--purple-light),transparent); transform:scaleX(0); transition:transform .35s; }
+.feat-card:hover { background:var(--bg3); }
+.feat-card:hover::before { transform:scaleX(1); }
+.feat-icon { font-size:2rem; margin-bottom:.9rem; }
+.feat-name { font-family:var(--font-display); font-size:1.35rem; letter-spacing:.07em; color:var(--purple-soft); margin-bottom:.6rem; }
+.feat-desc { color:var(--muted); line-height:1.72; font-size:.93rem; }
+
+/* ── CTA BANNER ── */
+.cta-banner {
+  background:linear-gradient(135deg, var(--bg3), rgba(124,58,237,.1));
+  border:1px solid var(--border); padding:4rem 3rem;
+  text-align:center; position:relative; overflow:hidden; margin:0 2rem;
+}
+.cta-banner::before {
+  content:''; position:absolute; inset:-1px;
+  border:1px solid transparent;
+  background:linear-gradient(135deg, rgba(124,58,237,.5), transparent 50%, rgba(168,85,247,.3)) border-box;
+  -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite:destination-out; mask-composite:exclude;
+}
+.cta-banner h2 { font-family:var(--font-display); font-size:2.8rem; letter-spacing:.07em; margin-bottom:.8rem; }
+.cta-banner p { color:var(--muted); margin-bottom:2rem; font-size:1.05rem; }
+
+/* ── ABOUT ── */
+.about-text { font-size:1.03rem; line-height:1.95; color:#c9bfe8; }
+.about-text p { margin-bottom:1.2rem; }
+.about-text strong { color:var(--purple-soft); font-weight:600; }
+.pillars { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1.4rem; margin-top:2.5rem; }
+.pillar { background:var(--bg2); border:1px solid var(--border); padding:1.7rem 1.4rem; transition:border-color .3s, transform .3s; }
+.pillar:hover { border-color:var(--border-s); transform:translateY(-3px); }
+.pillar-icon { font-size:1.7rem; margin-bottom:.6rem; }
+.pillar-title { font-family:var(--font-display); font-size:1.18rem; letter-spacing:.07em; color:var(--purple-soft); margin-bottom:.3rem; }
+.pillar-desc { color:var(--muted); font-size:.9rem; line-height:1.65; }
+
+/* ── TEAM ── */
+.team-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(175px,1fr)); gap:1.4rem; margin-top:2.5rem; }
+.member { background:var(--bg2); border:1px solid var(--border); overflow:hidden; transition:transform .3s, border-color .3s; position:relative; }
+.member::after { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg, var(--purple), var(--purple-light)); transform:scaleX(0); transition:transform .35s; }
+.member:hover { transform:translateY(-5px); border-color:var(--border-s); }
+.member:hover::after { transform:scaleX(1); }
+.member-avatar { width:100%; aspect-ratio:1; object-fit:cover; display:block; background:var(--bg3); }
+.member-ph { width:100%; aspect-ratio:1; background:linear-gradient(135deg, var(--bg3), rgba(124,58,237,.15)); display:flex; align-items:center; justify-content:center; font-size:2.8rem; color:var(--border); }
+.member-info { padding:.9rem 1rem; }
+.member-name { font-family:var(--font-display); font-size:1.2rem; letter-spacing:.06em; }
+.member-role { font-family:var(--font-mono); font-size:.68rem; letter-spacing:.12em; text-transform:uppercase; color:var(--purple-soft); margin-top:.2rem; }
+
+/* ── RULES ── */
+.rules-center { display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:5rem 2rem; max-width:660px; margin:0 auto; }
+.rules-big-icon { font-size:5rem; margin-bottom:1.8rem; animation:float 3.5s ease-in-out infinite; }
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+.rules-title { font-family:var(--font-display); font-size:2.4rem; letter-spacing:.07em; margin-bottom:.8rem; }
+.rules-desc { color:var(--muted); line-height:1.85; margin-bottom:2.5rem; }
+.rules-warn { width:100%; margin-top:2.5rem; padding:1.4rem 1.8rem; border:1px solid rgba(168,85,247,.28); background:rgba(124,58,237,.05); text-align:left; }
+.rules-warn-title { font-family:var(--font-display); font-size:1.1rem; color:var(--purple-soft); letter-spacing:.07em; margin-bottom:.4rem; }
+.rules-warn p { color:var(--muted); font-size:.9rem; line-height:1.7; }
+
+/* ── VIP ── */
+.vip-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(295px,1fr)); gap:1.8rem; margin-top:2.5rem; }
+.vip-card { background:var(--bg2); border:1px solid var(--border); display:flex; flex-direction:column; position:relative; overflow:hidden; transition:transform .3s, box-shadow .3s; }
+.vip-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg, var(--purple-dim), var(--purple-light)); }
+.vip-card.feat { border-color:var(--purple); background:linear-gradient(180deg, rgba(124,58,237,.1) 0%, var(--bg2) 35%); }
+.vip-card.feat::before { background:var(--purple-light); }
+.vip-card:hover { transform:translateY(-6px); box-shadow:0 20px 60px rgba(0,0,0,.5); }
+.vip-badge { position:absolute; top:1rem; right:1rem; font-family:var(--font-mono); font-size:.62rem; letter-spacing:.1em; text-transform:uppercase; background:var(--purple); color:#fff; padding:.2rem .7rem; border-radius:2px; }
+.vip-head { padding:1.8rem 1.8rem 1.4rem; }
+.vip-tier { font-family:var(--font-mono); font-size:.68rem; letter-spacing:.18em; text-transform:uppercase; color:var(--purple-soft); margin-bottom:.35rem; }
+.vip-name { font-family:var(--font-display); font-size:2rem; letter-spacing:.07em; }
+.vip-price { margin-top:.9rem; display:flex; align-items:baseline; gap:.4rem; }
+.vip-price-n { font-family:var(--font-display); font-size:2.8rem; color:var(--purple-light); letter-spacing:.04em; }
+.vip-price-u { color:var(--muted); font-size:.88rem; }
+.vip-sep { height:1px; background:var(--border); margin:0 1.8rem; }
+.vip-feats { padding:1.3rem 1.8rem 1.8rem; flex:1; }
+.vip-feats-lbl { font-family:var(--font-mono); font-size:.66rem; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); margin-bottom:.85rem; }
+.vip-list { list-style:none; display:flex; flex-direction:column; gap:.55rem; }
+.vip-list li { display:flex; align-items:flex-start; gap:.65rem; font-size:.93rem; line-height:1.5; }
+.vip-list li::before { content:'▸'; color:var(--purple-light); flex-shrink:0; margin-top:.1rem; }
+.vip-list li.off { color:var(--muted); }
+.vip-list li.off::before { color:#3a2a50; }
+.vip-foot { padding:0 1.8rem 1.8rem; }
+.vip-info-box { background:var(--bg2); border:1px solid var(--border); padding:1.8rem 2rem; margin-top:2.5rem; }
+.vip-info-box h3 { font-family:var(--font-display); font-size:1.4rem; letter-spacing:.07em; color:var(--purple-soft); margin-bottom:.7rem; }
+.vip-info-box p { color:var(--muted); line-height:1.8; font-size:.92rem; }
+
+/* ── FOOTER ── */
+footer { background:var(--bg2); border-top:1px solid var(--border); padding:2.5rem 3.5rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1.5rem; }
+.footer-logo { font-family:var(--font-display); font-size:1.7rem; letter-spacing:.12em; }
+.footer-logo span { color:var(--purple-light); }
+.footer-nav { display:flex; gap:2rem; list-style:none; flex-wrap:wrap; }
+.footer-nav a { color:var(--muted); text-decoration:none; font-size:.83rem; letter-spacing:.08em; text-transform:uppercase; transition:color .2s; cursor:pointer; }
+.footer-nav a:hover { color:var(--purple-light); }
+.footer-copy { color:var(--muted); font-size:.78rem; }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px) {
+  nav { padding:0 1.2rem; }
+  .nav-links li a { padding:.35rem .7rem; font-size:.78rem; }
+  footer { flex-direction:column; text-align:center; padding:2rem 1.5rem; }
+  .cta-banner { margin:0 1rem; padding:2.5rem 1.5rem; }
+}
+@media(max-width:480px) {
+  .nav-links li a { padding:.3rem .45rem; font-size:.7rem; letter-spacing:.04em; }
+  .hero-title { font-size:clamp(4rem,18vw,7rem); }
+}
+</style>
+</head>
+<body>
+
+<!-- TRANSITION OVERLAY -->
+<div id="pt"></div>
+
+<!-- ══ NAV ══ -->
+<nav>
+  <span class="nav-logo" onclick="go('home')">LOCK <span>RP</span></span>
+  <ul class="nav-links">
+    <li><a data-p="home"  onclick="go('home')"  class="active">Home</a></li>
+    <li><a data-p="about" onclick="go('about')">O nás</a></li>
+    <li><a data-p="rules" onclick="go('rules')">Rules</a></li>
+    <li><a data-p="vip"   onclick="go('vip')">VIP</a></li>
+  </ul>
+</nav>
+
+<!-- ══════════════════════════════
+     HOME
+══════════════════════════════ -->
+<div id="pg-home" class="page active">
+
+  <section class="hero">
+    <div class="bg-grid"></div>
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
+    <div style="position:relative;z-index:2">
+      <p class="tag">// FiveM Roleplay Server — CZ/SK</p>
+      <h1 class="hero-title">LOCK <em>RP</em></h1>
+      <p class="hero-sub">Zažij realismus na jiné úrovni. Ponor se do světa, kde každé rozhodnutí má váhu.</p>
+      <div class="hero-btns">
+        <a class="btn btn-purple" href="https://discord.gg/TVUJ_LINK" target="_blank">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+          Discord
+        </a>
+        <button class="btn btn-outline" onclick="go('about')">O projektu</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="stats-row">
+    <div class="stat"><div class="stat-n">64</div><div class="stat-l">Sloty</div></div>
+    <div class="stat"><div class="stat-n">24/7</div><div class="stat-l">Online</div></div>
+    <div class="stat"><div class="stat-n">CZ/SK</div><div class="stat-l">Komunita</div></div>
+    <div class="stat"><div class="stat-n">v1.0</div><div class="stat-l">Verze</div></div>
+  </div>
+
+  <section class="section">
+    <div class="reveal">
+      <p class="s-label">// Co nabízíme</p>
+      <h2 class="s-title">Proč <em>Lock RP</em></h2>
+    </div>
+    <div class="feat-grid reveal d1">
+      <div class="feat-card"><div class="feat-icon">🏙️</div><div class="feat-name">Živé město</div><p class="feat-desc">Každá čtvrť má svůj příběh. Od přepychových vil po temné uličky – město žije s tebou.</p></div>
+      <div class="feat-card"><div class="feat-icon">⚖️</div><div class="feat-name">Vyvážený systém</div><p class="feat-desc">Poctivá pravidla, férový staff a transparentní správa. Žádné favorizování.</p></div>
+      <div class="feat-card"><div class="feat-icon">🚓</div><div class="feat-name">Frakce & organizace</div><p class="feat-desc">Policie, EMS, kriminální skupiny i legální firmy. Každá role má smysl.</p></div>
+      <div class="feat-card"><div class="feat-icon">🛠️</div><div class="feat-name">Custom skripty</div><p class="feat-desc">Originální mechaniky šité na míru pro maximální ponoření do roleplay světa.</p></div>
+      <div class="feat-card"><div class="feat-icon">🎖️</div><div class="feat-name">VIP systém</div><p class="feat-desc">Podpoř server a získej exkluzivní výhody bez narušení herní rovnováhy.</p></div>
+      <div class="feat-card"><div class="feat-icon">🤝</div><div class="feat-name">Přátelská komunita</div><p class="feat-desc">Stovky hráčů, aktivní Discord a staff, který tě vítá a pomáhá na každém kroku.</p></div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section style="padding:5rem 2rem">
+    <div class="cta-banner reveal">
+      <h2>Připoj se k <em style="color:var(--purple-light);font-style:normal">Lock RP</em></h2>
+      <p>Zaregistruj se na Discordu, přečti pravidla a začni svůj příběh.</p>
+      <a class="btn btn-purple" href="https://discord.gg/TVUJ_LINK" target="_blank">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+        Připojit se na Discord
+      </a>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-logo">LOCK <span>RP</span></div>
+    <ul class="footer-nav">
+      <li><a onclick="go('home')">Home</a></li>
+      <li><a onclick="go('about')">O nás</a></li>
+      <li><a onclick="go('rules')">Rules</a></li>
+      <li><a onclick="go('vip')">VIP</a></li>
+      <li><a href="https://discord.gg/TVUJ_LINK" target="_blank">Discord</a></li>
+    </ul>
+    <span class="footer-copy">© 2025 Lock RP. Všechna práva vyhrazena.</span>
+  </footer>
+</div>
+
+<!-- ══════════════════════════════
+     O NÁS
+══════════════════════════════ -->
+<div id="pg-about" class="page">
+  <header class="sub-header">
+    <div class="bg-grid"></div>
+    <div class="orb orb1" style="opacity:.45"></div>
+    <p class="page-tag">// O projektu</p>
+    <h1 class="page-title">O <em>nás</em></h1>
+  </header>
+
+  <section class="section section-sm">
+    <div class="reveal">
+      <p class="s-label">// Příběh projektu</p>
+      <h2 class="s-title">Kdo <em>jsme</em></h2>
+    </div>
+    <div class="about-text reveal d1">
+      <p><strong>Lock RP</strong> je česko-slovenský FiveM roleplay server zaměřený na <strong>realismus, kvalitu a komunitu</strong>. Vznikl z nadšení skupiny hráčů, kteří chtěli vytvořit místo, kde má roleplay skutečnou váhu a každá interakce dává smysl.</p>
+      <p>Naším cílem je poskytovat stabilní, zábavné a přátelské prostředí pro všechny – od začátečníků až po zkušené roleplayers. Věříme, že skvělý server stojí na skvělé komunitě.</p>
+      <p>Server běží na vlastních <strong>custom skriptech</strong>, pravidelně se aktualizuje a tým administrátorů je vždy k dispozici na Discordu. Přidej se k nám a stvoř si vlastní příběh.</p>
+    </div>
+    <div class="pillars reveal d2">
+      <div class="pillar"><div class="pillar-icon">🎯</div><div class="pillar-title">Realismus</div><p class="pillar-desc">Každý systém je navržen tak, aby posouvat zážitek co nejblíže realitě.</p></div>
+      <div class="pillar"><div class="pillar-icon">🛡️</div><div class="pillar-title">Fair-play</div><p class="pillar-desc">Nulová tolerance cheatingu a toxicity. Staff zasahuje rychle a spravedlivě.</p></div>
+      <div class="pillar"><div class="pillar-icon">💬</div><div class="pillar-title">Komunita</div><p class="pillar-desc">Aktivní Discord, pravidelné eventy a přátelská atmosféra pro každého.</p></div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section class="section">
+    <div class="reveal">
+      <p class="s-label">// Administrační tým</p>
+      <h2 class="s-title">Náš <em>tým</em></h2>
+      <p class="s-sub">Tito lidé se starají o chod serveru, komunitu a vývoj. Vždy nás najdeš na Discordu.</p>
+    </div>
+
+    <div class="team-grid reveal d1">
+      <!--
+        JAK PŘIDAT FOTKU:
+        1. Vytvoř složku "images/" vedle index.html
+        2. Nahraj tam Discord avatar (např. jirka.png)
+        3. Smaž <div class="member-ph">...</div>
+        4. Přidej: <img class="member-avatar" src="images/jirka.png" alt="Jirka">
+      -->
+      <div class="member">
+        <div class="member-ph">👑</div>
+        <div class="member-info"><div class="member-name">Jméno</div><div class="member-role">Zakladatel</div></div>
+      </div>
+      <div class="member">
+        <div class="member-ph">⚡</div>
+        <div class="member-info"><div class="member-name">Jméno</div><div class="member-role">Co-Owner</div></div>
+      </div>
+      <div class="member">
+        <div class="member-ph">🛡️</div>
+        <div class="member-info"><div class="member-name">Jméno</div><div class="member-role">Head Admin</div></div>
+      </div>
+      <div class="member">
+        <div class="member-ph">🔧</div>
+        <div class="member-info"><div class="member-name">Jméno</div><div class="member-role">Developer</div></div>
+      </div>
+      <div class="member">
+        <div class="member-ph">📋</div>
+        <div class="member-info"><div class="member-name">Jméno</div><div class="member-role">Admin</div></div>
+      </div>
+      <div class="member">
+        <div class="member-ph">💬</div>
+        <div class="member-info"><div class="member-name">Jméno</div><div class="member-role">Moderátor</div></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-logo">LOCK <span>RP</span></div>
+    <ul class="footer-nav">
+      <li><a onclick="go('home')">Home</a></li>
+      <li><a onclick="go('about')">O nás</a></li>
+      <li><a onclick="go('rules')">Rules</a></li>
+      <li><a onclick="go('vip')">VIP</a></li>
+      <li><a href="https://discord.gg/TVUJ_LINK" target="_blank">Discord</a></li>
+    </ul>
+    <span class="footer-copy">© 2025 Lock RP. Všechna práva vyhrazena.</span>
+  </footer>
+</div>
+
+<!-- ══════════════════════════════
+     RULES
+══════════════════════════════ -->
+<div id="pg-rules" class="page">
+  <header class="sub-header">
+    <div class="bg-grid"></div>
+    <div class="orb orb1" style="opacity:.45"></div>
+    <p class="page-tag">// Serverová pravidla</p>
+    <h1 class="page-title"><em>Rules</em></h1>
+  </header>
+
+  <div class="rules-center reveal">
+    <div class="rules-big-icon">📋</div>
+    <h2 class="rules-title">Přečti si pravidla</h2>
+    <p class="rules-desc">Pravidla Lock RP jsou uveřejněna na GitHubu. Jsou závazná pro všechny hráče. Neznalost pravidel neomlouvá – před vstupem na server si je pečlivě prostuduj.</p>
+    <a class="btn btn-purple" href="https://github.com/TVUJ_GITHUB/PRAVIDLA_REPO" target="_blank">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"/></svg>
+      Zobrazit pravidla na GitHubu
+    </a>
+    <div class="rules-warn">
+      <div class="rules-warn-title">⚠️ Důležité upozornění</div>
+      <p>Porušení pravidel může vést k dočasnému banu nebo trvalému vyloučení ze serveru. Pokud máš otázky, kontaktuj staff na Discordu.</p>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-logo">LOCK <span>RP</span></div>
+    <ul class="footer-nav">
+      <li><a onclick="go('home')">Home</a></li>
+      <li><a onclick="go('about')">O nás</a></li>
+      <li><a onclick="go('rules')">Rules</a></li>
+      <li><a onclick="go('vip')">VIP</a></li>
+      <li><a href="https://discord.gg/TVUJ_LINK" target="_blank">Discord</a></li>
+    </ul>
+    <span class="footer-copy">© 2025 Lock RP. Všechna práva vyhrazena.</span>
+  </footer>
+</div>
+
+<!-- ══════════════════════════════
+     VIP
+══════════════════════════════ -->
+<div id="pg-vip" class="page">
+  <header class="sub-header">
+    <div class="bg-grid"></div>
+    <div class="orb orb1" style="opacity:.45"></div>
+    <p class="page-tag">// Podpoř server</p>
+    <h1 class="page-title"><em>VIP</em> Balíčky</h1>
+  </header>
+
+  <section class="section">
+    <div class="reveal">
+      <p class="s-label">// Dostupné balíčky</p>
+      <h2 class="s-title">Vyber svůj <em>VIP</em></h2>
+      <p class="s-sub">Zakoupením VIP přímo podporuješ provoz a vývoj serveru. Vše je fair-play – žádné P2W výhody.</p>
+    </div>
+
+    <div class="vip-grid reveal d1">
+
+      <!-- BRONZE -->
+      <div class="vip-card">
+        <div class="vip-head">
+          <div class="vip-tier">Tier I</div>
+          <div class="vip-name">BRONZE</div>
+          <div class="vip-price"><span class="vip-price-n">???</span><span class="vip-price-u">Kč / měsíc</span></div>
+        </div>
+        <div class="vip-sep"></div>
+        <div class="vip-feats">
+          <div class="vip-feats-lbl">Obsah balíčku</div>
+          <ul class="vip-list">
+            <li>Výhoda č. 1 – doplň sám</li>
+            <li>Výhoda č. 2 – doplň sám</li>
+            <li>Výhoda č. 3 – doplň sám</li>
+            <li class="off">Dostupné ve vyšším tieru</li>
+            <li class="off">Dostupné ve vyšším tieru</li>
+          </ul>
+        </div>
+        <div class="vip-foot"><a class="btn btn-outline btn-w" href="https://discord.gg/TVUJ_LINK" target="_blank">Zakoupit</a></div>
+      </div>
+
+      <!-- SILVER -->
+      <div class="vip-card feat">
+        <div class="vip-badge">Nejoblíbenější</div>
+        <div class="vip-head">
+          <div class="vip-tier">Tier II</div>
+          <div class="vip-name">SILVER</div>
+          <div class="vip-price"><span class="vip-price-n">???</span><span class="vip-price-u">Kč / měsíc</span></div>
+        </div>
+        <div class="vip-sep"></div>
+        <div class="vip-feats">
+          <div class="vip-feats-lbl">Obsah balíčku</div>
+          <ul class="vip-list">
+            <li>Vše z Bronze</li>
+            <li>Výhoda č. 1 – doplň sám</li>
+            <li>Výhoda č. 2 – doplň sám</li>
+            <li>Výhoda č. 3 – doplň sám</li>
+            <li class="off">Dostupné ve vyšším tieru</li>
+          </ul>
+        </div>
+        <div class="vip-foot"><a class="btn btn-purple btn-w" href="https://discord.gg/TVUJ_LINK" target="_blank">Zakoupit</a></div>
+      </div>
+
+      <!-- GOLD -->
+      <div class="vip-card">
+        <div class="vip-head">
+          <div class="vip-tier">Tier III</div>
+          <div class="vip-name">GOLD</div>
+          <div class="vip-price"><span class="vip-price-n">???</span><span class="vip-price-u">Kč / měsíc</span></div>
+        </div>
+        <div class="vip-sep"></div>
+        <div class="vip-feats">
+          <div class="vip-feats-lbl">Obsah balíčku</div>
+          <ul class="vip-list">
+            <li>Vše z Silver</li>
+            <li>Výhoda č. 1 – doplň sám</li>
+            <li>Výhoda č. 2 – doplň sám</li>
+            <li>Výhoda č. 3 – doplň sám</li>
+            <li>Výhoda č. 4 – doplň sám</li>
+          </ul>
+        </div>
+        <div class="vip-foot"><a class="btn btn-outline btn-w" href="https://discord.gg/TVUJ_LINK" target="_blank">Zakoupit</a></div>
+      </div>
+
+    </div>
+
+    <div class="vip-info-box reveal d2">
+      <h3>ℹ️ Jak zakoupit VIP?</h3>
+      <p>Zakoupení VIP probíhá přes náš Discord server. Otevři ticket v sekci <strong style="color:var(--purple-soft)">#vip-koupě</strong>, zvol balíček a administrátor tě provede celým procesem platby a aktivace. VIP je aktivní po dobu 30 dní od zakoupení.</p>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-logo">LOCK <span>RP</span></div>
+    <ul class="footer-nav">
+      <li><a onclick="go('home')">Home</a></li>
+      <li><a onclick="go('about')">O nás</a></li>
+      <li><a onclick="go('rules')">Rules</a></li>
+      <li><a onclick="go('vip')">VIP</a></li>
+      <li><a href="https://discord.gg/TVUJ_LINK" target="_blank">Discord</a></li>
+    </ul>
+    <span class="footer-copy">© 2025 Lock RP. Všechna práva vyhrazena.</span>
+  </footer>
+</div>
+
+<!-- ══ JAVASCRIPT ══ -->
+<script>
+const pt = document.getElementById('pt');
+let cur = 'home', busy = false;
+
+function go(target) {
+  if (target === cur || busy) return;
+  busy = true;
+
+  // 1) overlay slides IN (from top)
+  pt.className = 'in';
+
+  setTimeout(() => {
+    // 2) swap pages
+    document.getElementById('pg-' + cur).classList.remove('active');
+    const next = document.getElementById('pg-' + target);
+    next.classList.add('active');
+    window.scrollTo(0, 0);
+    cur = target;
+
+    // update nav
+    document.querySelectorAll('.nav-links a[data-p]').forEach(a => {
+      a.classList.toggle('active', a.dataset.p === target);
+    });
+
+    // trigger reveals on new page
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        observeAll();
+        // 3) overlay slides OUT (upward)
+        pt.className = 'out';
+        setTimeout(() => { pt.className = ''; busy = false; }, 430);
+      });
+    });
+  }, 390);
+}
+
+// ── SCROLL REVEAL ──
+const ro = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('vis'); });
+}, { threshold: 0.1 });
+
+function observeAll() {
+  document.querySelectorAll('.reveal:not(.vis)').forEach(el => ro.observe(el));
+}
+
+// init
+document.addEventListener('DOMContentLoaded', () => {
+  observeAll();
+});
+</script>
+</body>
+</html>
